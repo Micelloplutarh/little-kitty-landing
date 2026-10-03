@@ -6,8 +6,12 @@ set -e
 cd /usr/src/landing
 for f in * .[!.]*; do
     [ -e "$f" ] || continue
-    # модуль YourShield обновляет себя сам — в volume его не перезатираем
-    [ "$f" = yourshield ] && [ -d /var/www/html/yourshield ] && continue
+    if [ "$f" = yourshield ]; then
+        # установленный YourShield (есть config.local.php) обновляет себя сам — не перезатираем;
+        # неустановленный заменяем целиком, чтобы не оставался старый setup.php
+        [ -f /var/www/html/yourshield/config.local.php ] && continue
+        rm -rf /var/www/html/yourshield
+    fi
     cp -a "$f" /var/www/html/
 done
 chown -R www-data:www-data /var/www/html
