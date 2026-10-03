@@ -1,0 +1,102 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/yourshield/management_loader.php';
+
+use YourShield\Installer;
+use YourShield\Utils;
+
+function parseArgs(array $argv): array
+{
+    $command = $argv[1] ?? 'help';
+    $options = [];
+
+    for ($i = 2, $n = count($argv); $i < $n; $i++) {
+        $arg = (string) $argv[$i];
+        if (!str_starts_with($arg, '--')) {
+            continue;
+        }
+
+        $raw = substr($arg, 2);
+        if ($raw === '') {
+            continue;
+        }
+
+        $parts = explode('=', $raw, 2);
+        $key = str_replace('-', '_', trim($parts[0]));
+        $value = isset($parts[1]) ? trim($parts[1]) : '1';
+        if ($key !== '') {
+            $options[$key] = $value;
+        }
+    }
+
+    return [$command, $options];
+}
+
+function printHelp(): void
+{
+    $help = <<<TXT
+Usage:
+  ys scan
+  ys scan [--document-root=/path/to/site/public] [--mount-path=/shop] [--integration-method=auto|prepend|entrypoint|static|manual]
+  ys install [--site-key=...] [--secret=...] [--site-host=example.com] [--cloud-url=...] [--base-path=...] [--entrypoints=public/index.php,index.php] [--cms=auto|wordpress|laravel|symfony|generic] [--use-cms-presets=1] [--runtime-env=auto|apache|litespeed|nginx|iis|caddy|php_builtin|unknown] [--runtime-dir=/var/lib/yourshield/site] [--cache-dir=/var/lib/yourshield/site/cache] [--trusted-proxy-provider=none|cloudflare|cloudfront|fastly] [--trusted-proxy-auto-ips=1] [--trusted-proxy-cidrs=203.0.113.0/24,2001:db8::/32] [--trusted-proxy-enabled=1] [--assets-auto-update-enabled=1] [--assets-auto-update-interval-sec=900] [--module-auto-update-enabled=1] [--module-auto-update-interval-sec=21600] [--bot-block-mode=block|whitepage_dir] [--bot-whitepage-dir=/whitepages] [--cache-driver=auto|file|apcu|redis] [--cache-prefix=ys:] [--cache-apcu-prefix=ys:] [--cache-lock-wait-ms=500] [--cache-lock-ttl-sec=5] [--cache-redis-host=127.0.0.1] [--cache-redis-port=6379] [--cache-redis-db=0] [--cache-redis-password=...] [--cache-redis-timeout-sec=0.2] [--cache-redis-read-timeout-sec=0.2] [--cache-redis-prefix=ys:] [--probe-url=https://example.com]
+  ys test [--probe-url=https://example.com] [--base-path=/assets/.cache/...]
+  ys update-assets
+  ys update-module
+  ys disable
+  ys rollback
+  ys uninstall
+  ys cleanup-cache
+
+Notes:
+  - Run from the project root.
+  - The embedded module requires PHP >= 8.0 with ext-curl.
+  - On POSIX run mutating commands as the same non-root user as PHP-FPM.
+  - Installer writes local overrides to yourshield/config.local.php.
+  - Install accepts --document-root, --mount-path and --integration-method (auto|prepend|entrypoint|static|manual).
+  - Use --prepend-config=user_ini|htaccess for prepend mode; --browser-proof-enabled=0 disables browser continuity cookies.
+  - Install exits 0 only after a live --probe-url origin verifies protection; exit 2 means prepared and needs hosting action.
+  - Run ys test --probe-url=https://example.com after manual routing or PHP INI propagation to activate.
+  - Rollback selects the previous verified immutable module release; local configuration stays in place.
+TXT;
+    fwrite(STDOUT, $help . PHP_EOL);
+}
+
+[$command, $options] = parseArgs($argv);
+$mutatingCommands = ['install', 'test', 'disable', 'rollback', 'update-assets', 'update-module', 'uninstall', 'cleanup-cache'];
+if (in_array($command, $mutatingCommands, true)) {
+    $ownershipIssue = Utils::ownershipIssue(__DIR__ . '/yourshield/config.local.php');
+    if ($ownershipIssue !== null) {
+        fwrite(STDERR, 'YourShield: ' . $ownershipIssue . PHP_EOL);
+        exit(1);
+    }
+}
+$installer = new Installer(__DIR__);
+
+switch ($command) {
+    case 'scan':
+        $scan = $installer->scan($options);
+        fwrite(STDOUT, json_encode($scan, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . PHP_EOL);
+        exit(0);
+    case 'install':
+        exit($installer->install($options));
+    case 'test':
+        exit($installer->test($options));
+    case 'update-assets':
+        exit($installer->updateAssets());
+    case 'update-module':
+        exit($installer->updateModule());
+    case 'disable':
+        exit($installer->disable());
+    case 'rollback':
+        exit($installer->rollback());
+    case 'cleanup-cache':
+        exit($installer->cleanupCache());
+    case 'uninstall':
+        exit($installer->uninstall());
+    case 'help':
+    default:
+        printHelp();
+        exit($command === 'help' ? 0 : 1);
+}
