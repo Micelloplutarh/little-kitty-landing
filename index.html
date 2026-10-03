@@ -3,10 +3,6 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <!-- escape.js выключен (2026-10-02): побег из встроенных браузеров не нужен.
-       Включить обратно — раскомментировать строку ниже.
-  <script src="escape.js"></script>
-  -->
   <title>little_kitty</title>
   <meta name="theme-color" content="#0d0a12">
   <link rel="preload" as="image" href="img/bg.jpg">
@@ -171,19 +167,8 @@
     $('slogan').textContent = CONFIG.slogan;
     $('ctaText').textContent = CONFIG.ctaText;
 
-    // ── Кнопка: в обычном браузере — обычная ссылка, во встроенном — побег ──
-    // Автопобег самой страницы уже делает escape.js в <head>; здесь по клику
-    // открываем целевой URL во внешнем браузере (по жесту — IG iOS 417+).
-    var cta = $('cta');
-    cta.href = CONFIG.ctaUrl;
-
-    cta.addEventListener('click', function (e) {
-      var esc = window.__ESCAPE__;
-      if (esc && esc.canEscape) {
-        e.preventDefault();
-        esc.openInBrowser(CONFIG.ctaUrl);
-      }
-    });
+    // ── Кнопка: обычная ссылка на целевой URL ──
+    $('cta').href = CONFIG.ctaUrl;
   })();
   </script>
 </body>
