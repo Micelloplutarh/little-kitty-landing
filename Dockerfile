@@ -11,6 +11,7 @@ COPY . /usr/src/landing
 
 # Конфиг Apache: кэш статики, закрытые служебные файлы
 COPY apache.conf /etc/apache2/conf-enabled/landing.conf
+COPY php.ini /usr/local/etc/php/conf.d/landing.ini
 
 COPY docker-entrypoint.sh /usr/local/bin/landing-entrypoint
 ENTRYPOINT ["landing-entrypoint"]
