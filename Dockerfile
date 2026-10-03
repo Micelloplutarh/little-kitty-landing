@@ -6,13 +6,14 @@ RUN docker-php-ext-install opcache \
     && docker-php-ext-enable apcu redis \
     && a2enmod rewrite headers
 
-# Лендинг + PHP целиком в корень раздачи Apache
-COPY . /var/www/html
+# Лендинг + PHP кладём вне volume: в /var/www/html их копирует docker-entrypoint.sh
+COPY . /usr/src/landing
 
 # Конфиг Apache: кэш статики, закрытые служебные файлы
 COPY apache.conf /etc/apache2/conf-enabled/landing.conf
 
-# Apache работает от www-data — ему нужна запись (YourShield пишет config.local.php)
-RUN chown -R www-data:www-data /var/www/html
+COPY docker-entrypoint.sh /usr/local/bin/landing-entrypoint
+ENTRYPOINT ["landing-entrypoint"]
+CMD ["apache2-foreground"]
 
 EXPOSE 80
